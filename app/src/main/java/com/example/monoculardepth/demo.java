@@ -43,6 +43,8 @@ public class demo extends AppCompatActivity {
     int w = 320;
     int h = 240;
     float[][][] f1 = new float[1][h][w];
+    float[] pixels = new float[w * h];
+    int[] grayIntVals = new int[w * h];
 
     int framecount = 1;
     VideoView videoView;
@@ -83,8 +85,7 @@ public class demo extends AppCompatActivity {
 
             Log.d(TAG, "Before Array conversion");
 
-            float[] pixels = new float[w * h];
-            int[] grayIntVals = new int[w * h];
+
 
             int pixelsIndex = 0;
             //for depth model only!!
