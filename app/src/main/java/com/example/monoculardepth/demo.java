@@ -69,6 +69,27 @@ public class demo extends AppCompatActivity {
     Bitmap rgbDepthBitmap1 = Bitmap.createBitmap(w, h, ARGB_8888);
 
 
+    private void updateCanvas(int streamid)
+    {
+        if(streamid == 0)
+        {
+            bottom.clearColorFilter();
+            rgbDepthBitmap.setPixels(grayIntVals, 0, w, 0, 0, w, h);
+
+            //top.setImageBitmap(topf);
+            bottom.setImageBitmap(rgbDepthBitmap);
+        }
+        else
+        {
+            top.clearColorFilter();
+            rgbDepthBitmap1.setPixels(grayIntVals, 0, w, 0, 0, w, h);
+
+            //top.setImageBitmap(topf);
+            top.setImageBitmap(rgbDepthBitmap1);
+        }
+        fcount++;
+        Log.d(TAG, "After update bitmap");
+    }
 
     private void updateImage(int streamid) {
 
@@ -112,25 +133,8 @@ public class demo extends AppCompatActivity {
                 }
             }
 
+            updateCanvas(streamid);
 
-            if(streamid == 0)
-            {
-                bottom.clearColorFilter();
-                rgbDepthBitmap.setPixels(grayIntVals, 0, w, 0, 0, w, h);
-
-                //top.setImageBitmap(topf);
-                bottom.setImageBitmap(rgbDepthBitmap);
-            }
-            else
-            {
-                top.clearColorFilter();
-                rgbDepthBitmap1.setPixels(grayIntVals, 0, w, 0, 0, w, h);
-
-                //top.setImageBitmap(topf);
-                top.setImageBitmap(rgbDepthBitmap1);
-            }
-            fcount++;
-            Log.d(TAG, "After update bitmap");
 
         }
 
