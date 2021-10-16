@@ -36,6 +36,7 @@ public class demo extends AppCompatActivity {
     ImageView bottom,top;
 
     MediaMetadataRetriever mediaMetadataRetriever[] = new MediaMetadataRetriever[2];
+    ImageProcessor imageProcessor = null;
     MediaMetadataRetriever mediaMetadataRetriever1;
 
     int w = 320;
@@ -162,7 +163,11 @@ public class demo extends AppCompatActivity {
         Uri uri1 = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.demoo);
         mediaMetadataRetriever[1].setDataSource(getApplication(), uri1);
 
-
+        imageProcessor =
+                new ImageProcessor.Builder()
+                        .add(new ResizeOp(480,640, null))
+                        .add(new NormalizeOp(128.0f,128.0f))
+                        .build();
        // mediaMetadataRetriever1 = new MediaMetadataRetriever();
         //mediaMetadataRetriever1.setDataSource(getApplication(), uri1);
 
@@ -220,11 +225,7 @@ public class demo extends AppCompatActivity {
         inputImageBuffer.load(bitmap);
         // Creates processor for the TensorImage
         // TODO(b/143564309): Fuse ops inside ImageProcessor.
-        ImageProcessor imageProcessor =
-                new ImageProcessor.Builder()
-                        .add(new ResizeOp(480,640, null))
-                        .add(new NormalizeOp(128.0f,128.0f))
-                        .build();
+
         return imageProcessor.process(inputImageBuffer);
     }
 }
