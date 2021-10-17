@@ -29,8 +29,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.HashMap;
 
 import static android.graphics.Bitmap.Config.ARGB_8888;
+
+import wseemann.media.FFmpegMediaMetadataRetriever;
 
 public class demo extends AppCompatActivity {
     ImageView bottom,top;
@@ -39,6 +42,7 @@ public class demo extends AppCompatActivity {
     ImageProcessor imageProcessor = null;
     MediaMetadataRetriever mediaMetadataRetriever1;
     Bitmap bitmap = Bitmap.createBitmap(640, 480, ARGB_8888);
+    FFmpegMediaMetadataRetriever mmr = new FFmpegMediaMetadataRetriever();
 
     int w = 320;
     int h = 240;
@@ -84,7 +88,7 @@ public class demo extends AppCompatActivity {
             top.clearColorFilter();
             rgbDepthBitmap1.setPixels(grayIntVals, 0, w, 0, 0, w, h);
 
-            //top.setImageBitmap(topf);
+            //top.setImageBitmap(mmr.getFrameAtTime());
             top.setImageBitmap(rgbDepthBitmap1);
         }
         fcount++;
@@ -94,13 +98,18 @@ public class demo extends AppCompatActivity {
     private void updateImage(int streamid) {
 
         Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(framecount,MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
+
+
         Bitmap topf=bmFrame;
 
         if (bmFrame != null) {
 
 
             bitmap =bmFrame.copy(Bitmap.Config.ARGB_8888,true);
-            inputImageBuffer = loadImage(bitmap);
+            if(streamid == 1)
+               inputImageBuffer = loadImage(mmr.getFrameAtTime());
+            else
+                inputImageBuffer = loadImage(bitmap);
             Log.d(TAG, "Before Running TFLITTE");
             tflite.run(inputImageBuffer.getBuffer(), f1);
 
@@ -156,6 +165,18 @@ public class demo extends AppCompatActivity {
         mediaMetadataRetriever[0].setDataSource(getApplication(), uri);
 
         Uri uri1 = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.demoo);
+        //Uri uri1 = Uri.parse("rtsp://192.168.1.14:8080/h264_pcm.sdp");
+        //mediaMetadataRetriever[1].setDataSource("http://192.168.1.14:8080", new HashMap<String, String>());
+
+        //mediaMetadataRetriever[1].setDataSource(getApplication(),Uri.parse("http://192.168.1.14:8080"));
+        Log.d("ffmpeg", " ffmpeg instantiating retriever");
+        mmr.setDataSource("rtsp://192.168.1.14:8080/h264_pcm.sdp");
+        Log.d("ffmpeg", " ffmpeg data source set");
+
+        Bitmap b = mmr.getFrameAtTime(); // frame at 2 seconds
+        //byte [] artwork = mmr.getEmbeddedPicture();
+        Log.d("ffmpeg", " ffmpeg got frame");
+
         mediaMetadataRetriever[1].setDataSource(getApplication(), uri1);
 
         imageProcessor =
