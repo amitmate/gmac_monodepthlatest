@@ -97,19 +97,24 @@ public class demo extends AppCompatActivity {
 
     private void updateImage(int streamid) {
 
-        Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(framecount,MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
 
 
-        Bitmap topf=bmFrame;
 
-        if (bmFrame != null) {
+        if (true) {
 
 
-            bitmap =bmFrame.copy(Bitmap.Config.ARGB_8888,true);
             if(streamid == 1)
-               inputImageBuffer = loadImage(mmr.getFrameAtTime());
-            else
+            {
+                Log.d("rtspstreamdelay", " rtspstream before");
+                inputImageBuffer = loadImage(mmr.getFrameAtTime());
+                Log.d("rtspstreamdelay", " rtspstream after");
+
+            }
+            else {
+                Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(framecount,MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
+                bitmap =bmFrame.copy(Bitmap.Config.ARGB_8888,true);
                 inputImageBuffer = loadImage(bitmap);
+            }
             Log.d(TAG, "Before Running TFLITTE");
             tflite.run(inputImageBuffer.getBuffer(), f1);
 
