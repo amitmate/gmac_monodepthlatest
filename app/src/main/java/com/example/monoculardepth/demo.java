@@ -95,26 +95,64 @@ public class demo extends AppCompatActivity {
         Log.d(TAG, "After update bitmap");
     }
 
-    private void updateImage(int streamid) {
+    protected synchronized void runInBackground(final Runnable r) {
+        if (h2 != null) {
+            h2.post(r);
+        }
+    }
+
+    void processRTSPFrame(int streamid)
+
+    {
+        runInBackground( () -> {
 
 
+            Log.d("rtspstreamdelay", " rtspstream before");
+            inputImageBuffer = loadImage(mmr.getFrameAtTime());
+            Log.d("rtspstreamdelay", " rtspstream after");
+
+            Log.d(TAG, "Before Running TFLITTE");
+            tflite.run(inputImageBuffer.getBuffer(), f1);
+
+            Log.d(TAG, "Before Array conversion");
 
 
-        if (true) {
+            int pixelsIndex = 0;
+            //for depth model only!!
+            float max = 0.0f;
+            float min = 355.0f;
 
 
-            if(streamid == 1)
-            {
-                Log.d("rtspstreamdelay", " rtspstream before");
-                inputImageBuffer = loadImage(mmr.getFrameAtTime());
-                Log.d("rtspstreamdelay", " rtspstream after");
+            for (int x = 0; x < h; x++) {
+                for (int y = 0; y < w; y++) {
 
+                    if (f1[0][x][y] > max)
+                        max = f1[0][x][y];
+                    if (f1[0][x][y] < min)
+                        min = f1[0][x][y];
+
+                    pixels[pixelsIndex] = f1[0][x][y];
+
+                    float gVal = 255.0f * (pixels[pixelsIndex] - min) / (max - min);
+                    int gray = (int) gVal;
+                    //grayIntVals[pixelsIndex]= Color.argb(255, f1[0][x][y], f1[0][x][y], f1[0][x][y]);
+                    grayIntVals[pixelsIndex] = Color.argb(255, gray, gray, gray);
+                    pixelsIndex++;
+
+                }
             }
-            else {
-                Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(framecount,MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
-                bitmap =bmFrame.copy(Bitmap.Config.ARGB_8888,true);
-                inputImageBuffer = loadImage(bitmap);
-            }
+            updateCanvas(streamid);
+        });
+    }
+
+    private void processVideoFileFrame(int streamid)
+    {
+
+        runInBackground( () -> {
+            Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(framecount, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
+            bitmap = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
+            inputImageBuffer = loadImage(bitmap);
+
             Log.d(TAG, "Before Running TFLITTE");
             tflite.run(inputImageBuffer.getBuffer(), f1);
 
@@ -149,8 +187,21 @@ public class demo extends AppCompatActivity {
 
             updateCanvas(streamid);
 
+        });
+    }
+    private void updateImage(int streamid) {
 
-        }
+            if(streamid == 1)
+            {
+                processRTSPFrame(streamid);
+                //processVideoFileFrame(streamid);
+
+            }
+            else {
+                processVideoFileFrame(streamid);
+            }
+
+
 
     }
 
