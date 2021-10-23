@@ -63,9 +63,10 @@ public class demo extends AppCompatActivity {
     protected Interpreter tflite;
 
 
-    Runnable r2 = new Runnable() {
+    public Thread t1 = new Thread( new Runnable() {
         @Override
         public void run() {
+            Log.d("mmrtr", " mmrtr in thread 1");
 
             //if(fcount % 2 == 0)
             //    updateImage(0);
@@ -73,14 +74,18 @@ public class demo extends AppCompatActivity {
                 updateImage(1);
             framecount += 16666*9;
             //timeInMS[1] = System.currentTimeMillis() -timeInMS[1];
-            h2.post(r2);
+            h2.post(this);
 
         }
-    };
+    });
 
-    Runnable r1 = new Runnable() {
+
+
+
+    public Thread t2 = new Thread(new Runnable() {
         @Override
         public void run() {
+            Log.d("mmrtr", " mmrtr in thread 0");
 
             //if(fcount % 2 == 0)
                 updateImage(0);
@@ -89,10 +94,10 @@ public class demo extends AppCompatActivity {
             framecount += 16666*9;
             //timeInMS[0] = System.currentTimeMillis() -timeInMS[0];
 
-            h1.post(r1);
+            h1.post(this);
 
         }
-    };
+    });
 
     Bitmap rgbDepthBitmap = Bitmap.createBitmap(w, h, ARGB_8888);
     Bitmap rgbDepthBitmap1 = Bitmap.createBitmap(w, h, ARGB_8888);
@@ -180,7 +185,7 @@ public class demo extends AppCompatActivity {
     {
 
 
-            Log.d("delay", "mmrtr before" +  streamid);
+            Log.d("delay", "mmrtr before " +  streamid);
             long frameCount1 = 0;
 
             if(timeInMS[streamid] ==0)
@@ -195,7 +200,7 @@ public class demo extends AppCompatActivity {
 
             }
             Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
-            Log.d("delay", "mmrtr after" +  streamid);
+            Log.d("delay", "mmrtr after " +  streamid);
 
             if(streamid ==0)
             {
@@ -249,7 +254,7 @@ public class demo extends AppCompatActivity {
     {
 
 
-        Log.d("delay", "mmrtr before" +  streamid);
+        Log.d("delay", "mmrtr before " +  streamid);
 
         long frameCount1 = 0;
 
@@ -266,7 +271,7 @@ public class demo extends AppCompatActivity {
         }
 
         Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
-        Log.d("delay", "mmrtr after" +  streamid);
+        Log.d("delay", "mmrtr after " +  streamid);
         if(streamid ==0)
         {
             bitmap = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
@@ -390,13 +395,16 @@ public class demo extends AppCompatActivity {
         int imageTensorIndex = 0;
         DataType imageDataType = tflite.getInputTensor(imageTensorIndex).dataType();
         inputImageBuffer = new TensorImage(imageDataType);
-
+        t1.start();
+        t2.start();
         Thread background = new Thread() {
             public void run() {
                 try {
                     // Thread will sleep for 10 seconds
                     //Change 10 to the amount of time needed for the video
-                    sleep(40*1000);
+                    sleep(10*1000);
+                    t1.stop();
+                    t2.stop();
 
                     // After 10 seconds redirect to another intent
 
@@ -415,16 +423,16 @@ public class demo extends AppCompatActivity {
     @Override
     protected void onPostResume() {
         super.onPostResume();
-        h2.postDelayed(r2,1);
-        h1.postDelayed(r1,1);
+        //h2.postDelayed(r2,1);
+        //h1.postDelayed(r1,1);
 
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        h2.removeCallbacks(r2);
-        h1.removeCallbacks(r1);
+        //h2.removeCallbacks(r2);
+        //h1.removeCallbacks(r1);
 
     }
 
