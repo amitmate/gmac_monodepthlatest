@@ -72,11 +72,12 @@ public class demo extends AppCompatActivity {
             //    updateImage(0);
             //else
                 updateImage(1);
-            framecount += 16666*9;
             //timeInMS[1] = System.currentTimeMillis() -timeInMS[1];
-            h2.post(this);
+            if(( (System.currentTimeMillis() - timeInMS[1]) < 10000 ) || timeInMS[1] ==0)
+                h2.post(this);
 
         }
+
     });
 
 
@@ -91,10 +92,9 @@ public class demo extends AppCompatActivity {
                 updateImage(0);
             //else
             //    updateImage(1);
-            framecount += 16666*9;
             //timeInMS[0] = System.currentTimeMillis() -timeInMS[0];
-
-            h1.post(this);
+            if(( (System.currentTimeMillis() - timeInMS[0]) < 10000 ) || timeInMS[0] ==0)
+                h1.post(this);
 
         }
     });
@@ -328,6 +328,7 @@ public class demo extends AppCompatActivity {
                 Log.d("mmrtr", " background mmrtr before" + streamid);
                 runInBackground( () -> {
                     processVideoFileFrame1(streamid);
+                    //processRTSPFrame(streamid);
                 });
                 Log.d("mmrtr", " background mmrtr after" + streamid);
 
@@ -403,9 +404,6 @@ public class demo extends AppCompatActivity {
                     // Thread will sleep for 10 seconds
                     //Change 10 to the amount of time needed for the video
                     sleep(10*1000);
-                    t1.stop();
-                    t2.stop();
-
                     // After 10 seconds redirect to another intent
 
                     Intent i=new Intent(getBaseContext(),MainActivity.class);
