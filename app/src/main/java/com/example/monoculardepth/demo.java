@@ -1,6 +1,8 @@
 package com.example.monoculardepth;
 
 import androidx.appcompat.app.AppCompatActivity;
+import org.tensorflow.lite.gpu.CompatibilityList;
+import org.tensorflow.lite.gpu.GpuDelegate;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -30,6 +32,8 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static android.graphics.Bitmap.Config.ARGB_8888;
 
@@ -37,6 +41,7 @@ import wseemann.media.FFmpegMediaMetadataRetriever;
 
 public class demo extends AppCompatActivity {
     ImageView bottom,top,middle;
+    private ExecutorService executorService = Executors.newCachedThreadPool();
 
 
 
@@ -57,6 +62,7 @@ public class demo extends AppCompatActivity {
         private float[][][] f1 ;
         private float[] pixels;
         private Handler h2 = new Handler();
+        private String streamName ;
 
         public demoThread(Activity context,ImageView imgView, String uri, int inputHeight, int inputWidth, float mean, float std)
         {
@@ -64,6 +70,7 @@ public class demo extends AppCompatActivity {
             aiModel = tflite;
             height = inputHeight;
             width = inputWidth;
+            streamName = uri;
 
             if(uri.contains("rtsp://"))
             {
@@ -79,8 +86,17 @@ public class demo extends AppCompatActivity {
 
             try {
                 Interpreter.Options tfliteOptions = new Interpreter.Options();
-                tfliteOptions.setNumThreads(4);
 
+                if(uri.contains("demoo"))
+                    tfliteOptions.setNumThreads(4);
+                else {
+                    CompatibilityList compatList = new CompatibilityList();
+                    // if the device has a supported GPU, add the GPU delegate
+                    GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
+
+                    GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
+                    tfliteOptions.addDelegate(gpuDelegate);
+                }
                 tflite = new Interpreter(loadModelFile(context), tfliteOptions);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -104,7 +120,8 @@ public class demo extends AppCompatActivity {
 
             myImageView.setImageBitmap(outputBitmap);
 
-            start();
+            //start();
+            executorService.execute(this);
         }
         public void run()
         {
@@ -129,9 +146,9 @@ public class demo extends AppCompatActivity {
             }
             else
             {
-                inputBitmap  = mmr.getFrameAtTime();
+                inputBitmap  = fmmr.getFrameAtTime();
             }
-            Log.d("mmrtr", "mmrtr retrieved frame");
+            Log.d("mmrtr", "mmrtr retrieved frame" + streamName);
 
             aiInputBuffer.load(inputBitmap);
             aiInputBuffer = imagePreProcessor.process(aiInputBuffer);
@@ -144,7 +161,7 @@ public class demo extends AppCompatActivity {
 
             myImageView.setImageBitmap(outputBitmap);
 
-            if(( (System.currentTimeMillis() - threadStartTime) < 10000 ) || threadStartTime ==0)
+            if(( (System.currentTimeMillis() - threadStartTime) < 15000 ) || threadStartTime ==0)
                 h2.post(this);
 
         };
@@ -201,9 +218,9 @@ public class demo extends AppCompatActivity {
         top=findViewById(R.id.top);
         middle = findViewById(R.id.middle);
 
+        demoThread d3 = new demoThread(this,middle, "rtsp://192.168.1.14:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
         demoThread d1 = new demoThread(this,top, "android.resource://" + getPackageName() + "/" + R.raw.flower, 480, 640,128.0f, 128.0f);
         demoThread d2 = new demoThread(this,bottom, "android.resource://" + getPackageName() + "/" + R.raw.demoo, 480, 640,128.0f, 128.0f);
-        demoThread d3 = new demoThread(this,middle, "android.resource://" + getPackageName() + "/" + R.raw.box, 480, 640,128.0f, 128.0f);
 
 
         Thread background = new Thread() {
@@ -211,7 +228,7 @@ public class demo extends AppCompatActivity {
                 try {
                     // Thread will sleep for 10 seconds
                     //Change 10 to the amount of time needed for the video
-                    sleep(10*1000);
+                    sleep(15*1000);
                     // After 10 seconds redirect to another intent
 
                     Intent i=new Intent(getBaseContext(),MainActivity.class);
