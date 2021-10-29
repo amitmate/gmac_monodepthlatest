@@ -36,131 +36,131 @@ import static android.graphics.Bitmap.Config.ARGB_8888;
 import wseemann.media.FFmpegMediaMetadataRetriever;
 
 public class demo extends AppCompatActivity {
-    ImageView bottom,top;
-
-    MediaMetadataRetriever mediaMetadataRetriever[] = new MediaMetadataRetriever[2];
-    ImageProcessor imageProcessor = null;
-    MediaMetadataRetriever mediaMetadataRetriever1;
-    Bitmap bitmap = Bitmap.createBitmap(640, 480, ARGB_8888);
-    Bitmap bitmap1 = Bitmap.createBitmap(640, 480, ARGB_8888);
-
-    FFmpegMediaMetadataRetriever mmr = new FFmpegMediaMetadataRetriever();
-
-    int w = 320;
-    int h = 240;
-    float[][][] f1 = new float[1][h][w];
-    float[] pixels = new float[w * h];
-    int[] grayIntVals = new int[w * h];
-
-    int framecount = 1;
-    VideoView videoView;
-    int x=0,y=0,x1=0,y1=0;
-    int fcount=0;
-    long[] timeInMS = new long[2];
-
-    private TensorImage inputImageBuffer;
-    private static final String TAG = "DemoActivity";
-    protected Interpreter tflite;
+    ImageView bottom,top,middle;
 
 
-    public Thread t1 = new Thread( new Runnable() {
-        @Override
-        public void run() {
-            Log.d("mmrtr", " mmrtr in thread 1");
 
-            //if(fcount % 2 == 0)
-            //    updateImage(0);
-            //else
-                updateImage(1);
-            //timeInMS[1] = System.currentTimeMillis() -timeInMS[1];
-            if(( (System.currentTimeMillis() - timeInMS[1]) < 10000 ) || timeInMS[1] ==0)
+    public class demoThread extends  Thread {
+        private ImageView myImageView;
+        private MediaMetadataRetriever mmr = null  ;
+        private FFmpegMediaMetadataRetriever fmmr = null;
+        private Interpreter aiModel;
+        private TensorImage aiInputBuffer;
+        private ImageProcessor imagePreProcessor;
+        private Bitmap inputBitmap;
+        private Bitmap outputBitmap;
+        private long threadStartTime;
+        private int[] grayIntVals ;
+        private int height;
+        private int width;
+        protected Interpreter tflite;
+        float[][][] f1 ;
+        float[] pixels;
+
+        public demoThread(Activity context,ImageView imgView, String uri, int inputHeight, int inputWidth, float mean, float std)
+        {
+            myImageView = imgView;
+            aiModel = tflite;
+            height = inputHeight;
+            width = inputWidth;
+
+            if(uri.contains("rtsp://"))
+            {
+                fmmr = new FFmpegMediaMetadataRetriever();
+                fmmr.setDataSource(uri);
+            }
+            else
+            {
+                mmr = new MediaMetadataRetriever();
+                Uri myUri = Uri.parse(uri);
+                mmr.setDataSource(getApplication(),myUri);
+            }
+
+            try {
+                Interpreter.Options tfliteOptions = new Interpreter.Options();
+                tfliteOptions.setNumThreads(4);
+
+                tflite = new Interpreter(loadModelFile(context), tfliteOptions);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            int imageTensorIndex = 0;
+            DataType imageDataType = tflite.getInputTensor(imageTensorIndex).dataType();
+            aiInputBuffer = new TensorImage(imageDataType);
+
+            inputBitmap = Bitmap.createBitmap(width, height, ARGB_8888);
+            outputBitmap = Bitmap.createBitmap(width/2, height/2, ARGB_8888);
+            grayIntVals =  new int[(width/2)*(height/2)];
+            f1 = new float[1][(height/2)][(width/2)];
+            pixels = new float[(width/2)*(height/2)];
+
+            imagePreProcessor =
+                    new ImageProcessor.Builder()
+                            .add(new ResizeOp(height,width, null))
+                            .add(new NormalizeOp(mean,std))
+                            .build();
+
+            myImageView.setImageBitmap(outputBitmap);
+
+            start();
+        }
+        public void run()
+        {
+
+            long frameCount1 = 0;
+
+            if(threadStartTime ==0)
+            {
+                threadStartTime = System.currentTimeMillis() ;
+            }
+            else
+            {
+                frameCount1 =  (System.currentTimeMillis() - threadStartTime)*1000;
+                Log.d("timeInMs", " frameCount " + frameCount1/1000000 + " " );
+            }
+
+            if(fmmr == null)
+            {
+                Bitmap bmFrame = mmr.getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
+                inputBitmap = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
+            }
+            else
+            {
+                inputBitmap  = mmr.getFrameAtTime();
+            }
+
+            aiInputBuffer.load(inputBitmap);
+            aiInputBuffer = imagePreProcessor.process(aiInputBuffer);
+
+            tflite.run(aiInputBuffer.getBuffer(), f1);
+
+
+            myImageView.clearColorFilter();
+            outputBitmap.setPixels(postProcessOutput(f1), 0, width/2, 0, 0, width/2, height/2);
+
+            myImageView.setImageBitmap(outputBitmap);
+
+            if(( (System.currentTimeMillis() - threadStartTime) < 10000 ) || threadStartTime ==0)
                 h2.post(this);
 
-        }
-
-    });
-
-
-
-
-    public Thread t2 = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            Log.d("mmrtr", " mmrtr in thread 0");
-
-            //if(fcount % 2 == 0)
-                updateImage(0);
-            //else
-            //    updateImage(1);
-            //timeInMS[0] = System.currentTimeMillis() -timeInMS[0];
-            if(( (System.currentTimeMillis() - timeInMS[0]) < 10000 ) || timeInMS[0] ==0)
-                h1.post(this);
-
-        }
-    });
-
-    Bitmap rgbDepthBitmap = Bitmap.createBitmap(w, h, ARGB_8888);
-    Bitmap rgbDepthBitmap1 = Bitmap.createBitmap(w, h, ARGB_8888);
-
-
-    private void updateCanvas(int streamid)
-    {
-        if(streamid == 0)
+        };
+        public void setBitmap()
         {
-            bottom.clearColorFilter();
-            rgbDepthBitmap.setPixels(grayIntVals, 0, w, 0, 0, w, h);
-
-            //top.setImageBitmap(topf);
-            bottom.setImageBitmap(rgbDepthBitmap);
+            myImageView.setImageBitmap(outputBitmap);
         }
-        else
+        public int[] postProcessOutput(float[][][] f1)
         {
-            top.clearColorFilter();
-            rgbDepthBitmap1.setPixels(grayIntVals, 0, w, 0, 0, w, h);
-
-            //top.setImageBitmap(mmr.getFrameAtTime());
-            top.setImageBitmap(rgbDepthBitmap1);
-        }
-        fcount++;
-        Log.d(TAG, "After update bitmap");
-    }
-
-    protected  void runInBackground(final Runnable r) {
-        if (h2 != null) {
-            h2.post(r);
-        }
-    }
-
-    protected  void runInBackground2(final Runnable r) {
-        if (h1 != null) {
-            h1.post(r);
-        }
-    }
-
-    void processRTSPFrame(int streamid)
-
-    {
-        runInBackground( () -> {
-
-
-            Log.d("rtspstreamdelay", " rtspstream before");
-            inputImageBuffer = loadImage(mmr.getFrameAtTime());
-            Log.d("rtspstreamdelay", " rtspstream after");
-
-            Log.d(TAG, "Before Running TFLITTE");
-            tflite.run(inputImageBuffer.getBuffer(), f1);
-
-            Log.d(TAG, "Before Array conversion");
-
-
             int pixelsIndex = 0;
             //for depth model only!!
             float max = 0.0f;
             float min = 355.0f;
 
 
-            for (int x = 0; x < h; x++) {
-                for (int y = 0; y < w; y++) {
+            for (int x = 0; x < height/2; x++)
+            {
+                for (int y = 0; y < width/2; y++)
+                {
 
                     if (f1[0][x][y] > max)
                         max = f1[0][x][y];
@@ -177,179 +177,19 @@ public class demo extends AppCompatActivity {
 
                 }
             }
-            updateCanvas(streamid);
-        });
-    }
-
-    private void processVideoFileFrame(int streamid)
-    {
-
-
-            Log.d("delay", "mmrtr before " +  streamid);
-            long frameCount1 = 0;
-
-            if(timeInMS[streamid] ==0)
-            {
-                timeInMS[streamid] = System.currentTimeMillis() ;
-
-            }
-            else
-            {
-                frameCount1 =  (System.currentTimeMillis() - timeInMS[streamid])*1000;
-                Log.d("timeInMs", " frameCount " + frameCount1/1000000 + " " + streamid);
-
-            }
-            Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
-            Log.d("delay", "mmrtr after " +  streamid);
-
-            if(streamid ==0)
-            {
-                bitmap = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
-
-                inputImageBuffer = loadImage(bitmap);
-            }
-            else
-            {
-                bitmap1 = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
-
-                inputImageBuffer = loadImage(bitmap1);
-            }
-
-            Log.d(TAG, "Before Running TFLITTE");
-            tflite.run(inputImageBuffer.getBuffer(), f1);
-
-            Log.d(TAG, "Before Array conversion");
-
-
-
-            int pixelsIndex = 0;
-            //for depth model only!!
-            float max = 0.0f;
-            float min = 355.0f;
-
-
-            for (int x = 0; x < h; x++) {
-                for (int y = 0; y < w; y++) {
-
-                    if (f1[0][x][y] > max)
-                        max = f1[0][x][y];
-                    if (f1[0][x][y] < min)
-                        min = f1[0][x][y];
-
-                    pixels[pixelsIndex] = f1[0][x][y];
-
-                    float gVal = 255.0f * ( pixels[pixelsIndex] - min) / (max - min);
-                    int gray = (int) gVal;
-                    //grayIntVals[pixelsIndex]= Color.argb(255, f1[0][x][y], f1[0][x][y], f1[0][x][y]);
-                    grayIntVals[pixelsIndex] = Color.argb(255, gray, gray, gray);
-                    pixelsIndex++;
-
-                }
-            }
-
-            updateCanvas(streamid);
-    }
-
-    private void processVideoFileFrame1(int streamid)
-    {
-
-
-        Log.d("delay", "mmrtr before " +  streamid);
-
-        long frameCount1 = 0;
-
-        if(timeInMS[streamid] ==0)
-        {
-            timeInMS[streamid] = System.currentTimeMillis() ;
-
+            return grayIntVals;
         }
-        else
-        {
-            frameCount1 =  (System.currentTimeMillis() - timeInMS[streamid])*1000;
-
-            Log.d("timeInMs", " frameCount " + frameCount1/1000000 + " " + streamid);
+        private MappedByteBuffer loadModelFile(Activity activity) throws IOException {
+            AssetFileDescriptor fileDescriptor = activity.getAssets().openFd("modellowres.tflite");
+            FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+            FileChannel fileChannel = inputStream.getChannel();
+            long startOffset = fileDescriptor.getStartOffset();
+            long declaredLength = fileDescriptor.getDeclaredLength();
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
         }
-
-        Bitmap bmFrame = mediaMetadataRetriever[streamid].getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
-        Log.d("delay", "mmrtr after " +  streamid);
-        if(streamid ==0)
-        {
-            bitmap = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
-
-            inputImageBuffer = loadImage(bitmap);
-        }
-        else
-        {
-            bitmap1 = bmFrame.copy(Bitmap.Config.ARGB_8888, true);
-
-            inputImageBuffer = loadImage(bitmap1);
-        }
-
-        Log.d(TAG, "Before Running TFLITTE");
-        tflite.run(inputImageBuffer.getBuffer(), f1);
-
-        Log.d(TAG, "Before Array conversion");
-
-
-
-        int pixelsIndex = 0;
-        //for depth model only!!
-        float max = 0.0f;
-        float min = 355.0f;
-
-
-        for (int x = 0; x < h; x++) {
-            for (int y = 0; y < w; y++) {
-
-                if (f1[0][x][y] > max)
-                    max = f1[0][x][y];
-                if (f1[0][x][y] < min)
-                    min = f1[0][x][y];
-
-                pixels[pixelsIndex] = f1[0][x][y];
-
-                float gVal = 255.0f * ( pixels[pixelsIndex] - min) / (max - min);
-                int gray = (int) gVal;
-                //grayIntVals[pixelsIndex]= Color.argb(255, f1[0][x][y], f1[0][x][y], f1[0][x][y]);
-                grayIntVals[pixelsIndex] = Color.argb(255, gray, gray, gray);
-                pixelsIndex++;
-
-            }
-        }
-
-        updateCanvas(streamid);
-    }
-
-    private void updateImage(int streamid) {
-
-            if(streamid == 1)
-            {
-                //processRTSPFrame(streamid);
-                Log.d("mmrtr", " background mmrtr before" + streamid);
-                runInBackground( () -> {
-                    processVideoFileFrame1(streamid);
-                    //processRTSPFrame(streamid);
-                });
-                Log.d("mmrtr", " background mmrtr after" + streamid);
-
-            }
-            else {
-                Log.d("mmrtr", " background mmrtr before" + streamid);
-
-                runInBackground2( () -> {
-                    processVideoFileFrame(streamid);
-                });
-                Log.d("mmrtr", " background mmrtr after" + streamid);
-
-            }
-
-
-
-    }
+    };
 
     Handler h2 = new Handler();
-
-    Handler h1 = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -357,47 +197,13 @@ public class demo extends AppCompatActivity {
         setContentView(R.layout.activity_demo);
         bottom = findViewById(R.id.bottom);
         top=findViewById(R.id.top);
-        Uri uri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.flower);
-        mediaMetadataRetriever[0] = new MediaMetadataRetriever();
-        mediaMetadataRetriever[1] = new MediaMetadataRetriever();
+        middle = findViewById(R.id.middle);
 
-        mediaMetadataRetriever[0].setDataSource(getApplication(), uri);
+        demoThread d1 = new demoThread(this,top, "android.resource://" + getPackageName() + "/" + R.raw.flower, 480, 640,128.0f, 128.0f);
+        demoThread d2 = new demoThread(this,bottom, "android.resource://" + getPackageName() + "/" + R.raw.demoo, 480, 640,128.0f, 128.0f);
+        demoThread d3 = new demoThread(this,middle, "android.resource://" + getPackageName() + "/" + R.raw.box, 480, 640,128.0f, 128.0f);
 
-        Uri uri1 = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.demoo);
-        //Uri uri1 = Uri.parse("rtsp://192.168.1.14:8080/h264_pcm.sdp");
-        //mediaMetadataRetriever[1].setDataSource("http://192.168.1.14:8080", new HashMap<String, String>());
 
-        //mediaMetadataRetriever[1].setDataSource(getApplication(),Uri.parse("http://192.168.1.14:8080"));
-        Log.d("ffmpeg", " ffmpeg instantiating retriever");
-        //mmr.setDataSource("rtsp://192.168.1.14:8080/h264_pcm.sdp");
-        Log.d("ffmpeg", " ffmpeg data source set");
-
-        //Bitmap b = mmr.getFrameAtTime(); // frame at 2 seconds
-        //byte [] artwork = mmr.getEmbeddedPicture();
-        Log.d("ffmpeg", " ffmpeg got frame");
-
-        mediaMetadataRetriever[1].setDataSource(getApplication(), uri1);
-
-        imageProcessor =
-                new ImageProcessor.Builder()
-                        .add(new ResizeOp(480,640, null))
-                        .add(new NormalizeOp(128.0f,128.0f))
-                        .build();
-
-        try {
-            Interpreter.Options tfliteOptions = new Interpreter.Options();
-            tfliteOptions.setNumThreads(4);
-
-            tflite = new Interpreter(loadModelFile(this), tfliteOptions);
-        } catch (IOException e) {
-            e.printStackTrace();
-
-        }
-        int imageTensorIndex = 0;
-        DataType imageDataType = tflite.getInputTensor(imageTensorIndex).dataType();
-        inputImageBuffer = new TensorImage(imageDataType);
-        t1.start();
-        t2.start();
         Thread background = new Thread() {
             public void run() {
                 try {
@@ -418,35 +224,6 @@ public class demo extends AppCompatActivity {
         };
         background.start();
     }
-    @Override
-    protected void onPostResume() {
-        super.onPostResume();
-        //h2.postDelayed(r2,1);
-        //h1.postDelayed(r1,1);
 
-    }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        //h2.removeCallbacks(r2);
-        //h1.removeCallbacks(r1);
-
-    }
-
-    private MappedByteBuffer loadModelFile(Activity activity) throws IOException {
-        AssetFileDescriptor fileDescriptor = activity.getAssets().openFd("modellowres.tflite");
-        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-        FileChannel fileChannel = inputStream.getChannel();
-        long startOffset = fileDescriptor.getStartOffset();
-        long declaredLength = fileDescriptor.getDeclaredLength();
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-    }
-    private TensorImage loadImage(final Bitmap bitmap) {
-        inputImageBuffer.load(bitmap);
-        // Creates processor for the TensorImage
-        // TODO(b/143564309): Fuse ops inside ImageProcessor.
-
-        return imageProcessor.process(inputImageBuffer);
-    }
 }

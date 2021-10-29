@@ -37,6 +37,23 @@
         android:layout_weight="1">
 
         <ImageView
+            android:id="@+id/middle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:adjustViewBounds="true"
+
+            android:src="@color/colorPrimary">
+        </ImageView>
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <ImageView
             android:id="@+id/bottom"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
