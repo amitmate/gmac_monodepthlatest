@@ -54,8 +54,9 @@ public class demo extends AppCompatActivity {
         private int height;
         private int width;
         protected Interpreter tflite;
-        float[][][] f1 ;
-        float[] pixels;
+        private float[][][] f1 ;
+        private float[] pixels;
+        private Handler h2 = new Handler();
 
         public demoThread(Activity context,ImageView imgView, String uri, int inputHeight, int inputWidth, float mean, float std)
         {
@@ -120,6 +121,7 @@ public class demo extends AppCompatActivity {
                 Log.d("timeInMs", " frameCount " + frameCount1/1000000 + " " );
             }
 
+            Log.d("mmrtr", "mmrtr retrieving frame");
             if(fmmr == null)
             {
                 Bitmap bmFrame = mmr.getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
@@ -129,6 +131,7 @@ public class demo extends AppCompatActivity {
             {
                 inputBitmap  = mmr.getFrameAtTime();
             }
+            Log.d("mmrtr", "mmrtr retrieved frame");
 
             aiInputBuffer.load(inputBitmap);
             aiInputBuffer = imagePreProcessor.process(aiInputBuffer);
@@ -189,7 +192,6 @@ public class demo extends AppCompatActivity {
         }
     };
 
-    Handler h2 = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
