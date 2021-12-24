@@ -86,9 +86,13 @@ public class demo extends AppCompatActivity {
 
             try {
                 Interpreter.Options tfliteOptions = new Interpreter.Options();
+                Log.d("tfliteoption", uri.toString());
 
-                if(uri.contains("demoo"))
-                    tfliteOptions.setNumThreads(4);
+                if(false)
+                {
+                    tfliteOptions.setNumThreads(8);
+                    Log.d("tfliteoption", "cpu " + uri);
+                }
                 else {
                     CompatibilityList compatList = new CompatibilityList();
                     // if the device has a supported GPU, add the GPU delegate
@@ -135,10 +139,10 @@ public class demo extends AppCompatActivity {
             else
             {
                 frameCount1 =  (System.currentTimeMillis() - threadStartTime)*1000;
-                Log.d("timeInMs", " frameCount " + frameCount1/1000000 + " " );
+                Log.d("timeInMs", " frameCount " + frameCount1/1000000 + " " +  streamName + "mystr" );
             }
 
-            Log.d("mmrtr", "mmrtr retrieving frame");
+            Log.d("mmrtr", streamName + "mmrtr retrieving frame");
             if(fmmr == null)
             {
                 Bitmap bmFrame = mmr.getFrameAtTime(frameCount1, MediaMetadataRetriever.OPTION_CLOSEST); //unit in microsecond
@@ -148,20 +152,25 @@ public class demo extends AppCompatActivity {
             {
                 inputBitmap  = fmmr.getFrameAtTime();
             }
-            Log.d("mmrtr", "mmrtr retrieved frame" + streamName);
+            Log.d("mmrtr", streamName + "mmrtr retrieved frame");
 
             aiInputBuffer.load(inputBitmap);
             aiInputBuffer = imagePreProcessor.process(aiInputBuffer);
 
-            tflite.run(aiInputBuffer.getBuffer(), f1);
+            Log.d("infer", streamName + "start");
 
+            tflite.run(aiInputBuffer.getBuffer(), f1);
+            Log.d("infer", streamName + "end");
+
+            Log.d("postprocess", streamName + "start");
 
             myImageView.clearColorFilter();
             outputBitmap.setPixels(postProcessOutput(f1), 0, width/2, 0, 0, width/2, height/2);
 
             myImageView.setImageBitmap(outputBitmap);
+            Log.d("postprocess", streamName + "end");
 
-            if(( (System.currentTimeMillis() - threadStartTime) < 15000 ) || threadStartTime ==0)
+            if(( (System.currentTimeMillis() - threadStartTime) < 75000 ) || threadStartTime ==0)
                 h2.post(this);
 
         };
@@ -218,9 +227,18 @@ public class demo extends AppCompatActivity {
         top=findViewById(R.id.top);
         middle = findViewById(R.id.middle);
 
-        demoThread d3 = new demoThread(this,middle, "rtsp://192.168.1.14:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
-        demoThread d1 = new demoThread(this,top, "android.resource://" + getPackageName() + "/" + R.raw.flower, 480, 640,128.0f, 128.0f);
-        demoThread d2 = new demoThread(this,bottom, "android.resource://" + getPackageName() + "/" + R.raw.demoo, 480, 640,128.0f, 128.0f);
+        //demoThread d3 = new demoThread(this,middle, "rtsp://192.168.43.131:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
+        //demoThread d2 = new demoThread(this,top, "rtsp://192.168.43.108:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
+        demoThread d1 = new demoThread(this,bottom, "rtsp://192.168.1.8:8554/live" , 480, 640,128.0f, 128.0f);
+
+        //demoThread d3 = new demoThread(this,middle, "rtsp://192.168.43.72:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
+        //demoThread d2 = new demoThread(this,top, "rtsp://192.168.43.131:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
+        //demoThread d1 = new demoThread(this,bottom, "rtsp://192.168.43.108:8080/h264_pcm.sdp" , 480, 640,128.0f, 128.0f);
+
+
+        //demoThread d1 = new demoThread(this,top, "android.resource://" + getPackageName() + "/" + R.raw.flower, 480, 640,128.0f, 128.0f);
+        //demoThread d2 = new demoThread(this,bottom, "android.resource://" + getPackageName() + "/" + R.raw.demoo, 480, 640,128.0f, 128.0f);
+        //demoThread d3 = new demoThread(this,middle, "android.resource://" + getPackageName() + "/" + R.raw.box, 480, 640,128.0f, 128.0f);
 
 
         Thread background = new Thread() {
@@ -228,7 +246,7 @@ public class demo extends AppCompatActivity {
                 try {
                     // Thread will sleep for 10 seconds
                     //Change 10 to the amount of time needed for the video
-                    sleep(15*1000);
+                    sleep(75*1000);
                     // After 10 seconds redirect to another intent
 
                     Intent i=new Intent(getBaseContext(),MainActivity.class);

@@ -116,7 +116,7 @@ public class showCamera extends SurfaceView implements SurfaceHolder.Callback, C
         params.setPreviewSize(640,480);
         params.setPictureSize(640,480);
 
-        params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+        //params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         params.setPreviewFpsRange(30000,30000);
         camera.setParameters(params);
         try {
@@ -130,6 +130,7 @@ public class showCamera extends SurfaceView implements SurfaceHolder.Callback, C
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+
         camera.setPreviewCallback(new Camera.PreviewCallback() {
             @Override
             public void onPreviewFrame(byte[] data, Camera camera) {
